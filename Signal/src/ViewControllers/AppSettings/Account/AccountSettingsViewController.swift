@@ -346,7 +346,7 @@ class AccountSettingsViewController: OWSTableViewController2 {
                     title: "Switching account…",
                 ) { _ in
                     let keyFetcher = SSKEnvironment.shared.databaseStorageRef.keyFetcher
-                    await SignalApp.shared.resetAppDataAndExit(keyFetcher: keyFetcher)
+                    SignalApp.shared.resetAppDataAndExit(keyFetcher: keyFetcher)
                 }
             },
             fromViewController: self,
