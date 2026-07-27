@@ -110,7 +110,7 @@ public class RegistrationSplashViewController: OWSViewController, OWSNavigationC
 
         // Large buttons enclosed in a container with some extra horizontal padding.
         let continueButton = UIButton(
-            configuration: .largePrimary(title: CommonStrings.continueButton),
+            configuration: .largePrimary(title: "Sign in or create account"),
             primaryAction: UIAction { [weak self] _ in
                 self?.continuePressed()
             },

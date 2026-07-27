@@ -152,6 +152,13 @@ class AccountSettingsViewController: OWSTableViewController2 {
         } else if tsRegistrationState.isRegisteredPrimaryDevice {
             let accountSection = OWSTableSection()
             accountSection.headerTitle = accountSettingsTitle
+            accountSection.add(.actionItem(
+                withText: "Switch account",
+                accessibilityIdentifier: UIView.accessibilityIdentifier(in: self, name: "switch_account"),
+                actionBlock: { [weak self] in
+                    self?.switchAccount()
+                },
+            ))
             switch self.changeNumberState() {
             case .disallowed:
                 break
@@ -321,6 +328,29 @@ class AccountSettingsViewController: OWSTableViewController2 {
     private func unregisterUser() {
         let vc = DeleteAccountConfirmationViewController(appReadiness: appReadiness)
         presentFormSheet(OWSNavigationController(rootViewController: vc), animated: true)
+    }
+
+    /// Signal's data store is intentionally scoped to one account per app install.
+    /// Switching accounts therefore clears the local encrypted store before returning
+    /// the user to the existing registration/sign-in flow. This prevents data or key
+    /// material from one account being exposed to the next account.
+    private func switchAccount() {
+        OWSActionSheets.showConfirmationAlert(
+            title: "Switch account?",
+            message: "Messages and account data stored on this device will be removed before you sign in to another account.",
+            proceedTitle: "Switch account",
+            proceedStyle: .destructive,
+            proceedAction: { _ in
+                ModalActivityIndicatorViewController.present(
+                    fromViewController: self,
+                    title: "Switching account…",
+                ) { _ in
+                    let keyFetcher = SSKEnvironment.shared.databaseStorageRef.keyFetcher
+                    await SignalApp.shared.resetAppDataAndExit(keyFetcher: keyFetcher)
+                }
+            },
+            fromViewController: self,
+        )
     }
 
     private func deleteUnregisteredUserData() {
