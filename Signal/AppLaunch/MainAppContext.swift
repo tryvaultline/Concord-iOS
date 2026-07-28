@@ -168,12 +168,19 @@ class MainAppContext: NSObject, AppContext {
     }
 
     func appSharedDataDirectoryPath() -> String {
-        FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: TSConstants.applicationGroup)!.path
+        if let groupContainer = FileManager.default.containerURL(
+            forSecurityApplicationGroupIdentifier: TSConstants.applicationGroup,
+        ) {
+            return groupContainer.path
+        }
+        return appDocumentDirectoryPath()
     }
 
     func appDatabaseBaseDirectoryPath() -> String { appSharedDataDirectoryPath() }
 
-    func appUserDefaults() -> UserDefaults { UserDefaults(suiteName: TSConstants.applicationGroup)! }
+    func appUserDefaults() -> UserDefaults {
+        UserDefaults(suiteName: TSConstants.applicationGroup) ?? .standard
+    }
 
     func canPresentNotifications() -> Bool { true }
 
