@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import SafariServices
+import Foundation
 import SignalServiceKit
 public import SignalUI
 
@@ -12,7 +12,6 @@ public import SignalUI
 public protocol RegistrationSplashPresenter: AnyObject {
     func continueFromSplash()
     func setHasOldDevice(_ hasOldDevice: Bool)
-
     func switchToDeviceLinkingMode()
 }
 
@@ -24,10 +23,7 @@ public class RegistrationSplashViewController: OWSViewController, OWSNavigationC
         true
     }
 
-    private weak var presenter: RegistrationSplashPresenter?
-
     public init(presenter: RegistrationSplashPresenter) {
-        self.presenter = presenter
         super.init()
     }
 
@@ -36,192 +32,166 @@ public class RegistrationSplashViewController: OWSViewController, OWSNavigationC
 
         view.backgroundColor = .Signal.background
 
-        if UIDevice.current.isIPad {
-            let modeSwitchButton = UIButton(
-                configuration: .plain(),
-                primaryAction: UIAction { [weak self] _ in
-                    self?.didTapModeSwitch()
-                },
-            )
-            modeSwitchButton.configuration?.image = .link
-            modeSwitchButton.tintColor = .ows_gray25
-
-            view.addSubview(modeSwitchButton)
-            modeSwitchButton.translatesAutoresizingMaskIntoConstraints = false
-            NSLayoutConstraint.activate([
-                modeSwitchButton.widthAnchor.constraint(equalToConstant: 40),
-                modeSwitchButton.heightAnchor.constraint(equalToConstant: 40),
-                modeSwitchButton.trailingAnchor.constraint(equalTo: contentLayoutGuide.trailingAnchor),
-                modeSwitchButton.topAnchor.constraint(equalTo: contentLayoutGuide.topAnchor),
-            ])
-        }
-
-        // Image at the top.
-        let imageView = UIImageView(image: UIImage(named: "onboarding_splash_hero"))
-        imageView.contentMode = .scaleAspectFit
-        imageView.layer.minificationFilter = .trilinear
-        imageView.layer.magnificationFilter = .trilinear
-        imageView.setCompressionResistanceLow()
-        imageView.setContentHuggingVerticalLow()
-        let heroImageContainer = UIView.container()
-        heroImageContainer.addSubview(imageView)
-        imageView.translatesAutoresizingMaskIntoConstraints = false
-        // Center image vertically in the available space above title text.
-        NSLayoutConstraint.activate([
-            imageView.centerXAnchor.constraint(equalTo: heroImageContainer.centerXAnchor),
-            imageView.widthAnchor.constraint(equalTo: heroImageContainer.widthAnchor),
-            imageView.centerYAnchor.constraint(equalTo: heroImageContainer.centerYAnchor),
-            imageView.heightAnchor.constraint(equalTo: heroImageContainer.heightAnchor, constant: 0.8),
-        ])
-
-        // Welcome text.
-        let titleText = {
-            if TSConstants.isUsingProductionService {
-                return OWSLocalizedString(
-                    "ONBOARDING_SPLASH_TITLE",
-                    comment: "Title of the 'onboarding splash' view.",
-                )
-            } else {
-                return "Internal Staging Build\n\(AppVersionImpl.shared.currentAppVersion)"
-            }
-        }()
-        let titleLabel = UILabel.titleLabelForRegistration(text: titleText)
-
-        // Nonprofit label
-        let nonprofitAwarenessLabel = UILabel.explanationLabelForRegistration(
-            text: OWSLocalizedString(
-                "ONBOARDING_SPLASH_NONPROFIT",
-                comment: "Text indicating Signal is a nonprofit on the 'onboarding splash' view. For non-English languages, exclude the word '501c3'.",
-            ),
+        let titleLabel = UILabel.titleLabelForRegistration(text: "Concord")
+        let explanationLabel = UILabel.explanationLabelForRegistration(
+            text: "Sign in with your Concord username. Phone numbers and verification codes are not used.",
         )
-
-        // Terms of service and privacy policy.
-        let tosPPButton = UIButton(
-            configuration: .smallBorderless(title: OWSLocalizedString(
-                "ONBOARDING_SPLASH_TERM_AND_PRIVACY_POLICY",
-                comment: "Link to the 'terms and privacy policy' in the 'onboarding splash' view.",
-            )),
-            primaryAction: UIAction { [weak self] _ in
-                self?.showTOSPP()
-            },
-        )
-        tosPPButton.configuration?.baseForegroundColor = .Signal.secondaryLabel
-        tosPPButton.enableMultilineLabel()
-
-        // Large buttons enclosed in a container with some extra horizontal padding.
         let continueButton = UIButton(
             configuration: .largePrimary(title: "Sign in"),
             primaryAction: UIAction { [weak self] _ in
                 self?.continuePressed()
             },
         )
+        let largeButtonsContainer = UIStackView.verticalButtonStack(buttons: [continueButton])
 
-        let restoreOrTransferButton = UIButton(
-            configuration: .largeSecondary(title: OWSLocalizedString(
-                "ONBOARDING_SPLASH_RESTORE_OR_TRANSFER_BUTTON_TITLE",
-                comment: "Button for restoring or transferring account in the 'onboarding splash' view.",
-            )),
-            primaryAction: UIAction { [weak self] _ in
-                self?.didTapRestoreOrTransfer()
-            },
-        )
-        restoreOrTransferButton.enableMultilineLabel()
-
-        let largeButtonsContainer = UIStackView.verticalButtonStack(buttons: [continueButton, restoreOrTransferButton])
-
-        // Main content view.
         let stackView = addStaticContentStackView(arrangedSubviews: [
-            heroImageContainer,
             titleLabel,
-            nonprofitAwarenessLabel,
-            tosPPButton,
+            explanationLabel,
             largeButtonsContainer,
         ])
-        stackView.setCustomSpacing(44, after: imageView)
         stackView.setCustomSpacing(24, after: titleLabel)
-        stackView.setCustomSpacing(0, after: nonprofitAwarenessLabel)
-        stackView.setCustomSpacing(80, after: tosPPButton)
-
+        stackView.setCustomSpacing(48, after: explanationLabel)
         view.sendSubviewToBack(stackView)
-    }
-
-    // MARK: - Events
-
-    private func didTapModeSwitch() {
-        Logger.info("")
-        presenter?.switchToDeviceLinkingMode()
-    }
-
-    private func showTOSPP() {
-        let safariVC = SFSafariViewController(url: TSConstants.legalTermsUrl)
-        present(safariVC, animated: true)
     }
 
     private func continuePressed() {
         Logger.info("")
-        presenter?.continueFromSplash()
-    }
-
-    private func didTapRestoreOrTransfer() {
-        Logger.info("")
-        let sheet = RestoreOrTransferPickerController(
-            setHasOldDeviceBlock: { [weak self] hasOldDevice in
-                self?.dismiss(animated: true) {
-                    self?.presenter?.setHasOldDevice(hasOldDevice)
-                }
-            },
-        )
-        self.present(sheet, animated: true)
+        navigationController?.pushViewController(ConcordSignInViewController(), animated: true)
     }
 }
 
-private class RestoreOrTransferPickerController: StackSheetViewController {
+private final class ConcordSignInViewController: OWSViewController {
 
-    override var placeOnGlassIfAvailable: Bool { false }
-
-    private let setHasOldDeviceBlock: (Bool) -> Void
-    init(setHasOldDeviceBlock: @escaping (Bool) -> Void) {
-        self.setHasOldDeviceBlock = setHasOldDeviceBlock
-        super.init()
+    private struct LoginResponse: Decodable {
+        let accountId: String
+        let username: String
+        let displayName: String
+        let accessToken: String
     }
 
-    override open var sheetBackgroundColor: UIColor { .Signal.secondaryBackground }
+    private let usernameField = OWSTextField()
+    private let passwordField = OWSTextField()
+    private let statusLabel = UILabel.explanationLabelForRegistration(text: "")
+    private let signInButton = UIButton(configuration: .largePrimary(title: "Sign in"))
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        stackView.spacing = 16
 
-        let hasDeviceButton = UIButton.registrationChoiceButton(
-            title: OWSLocalizedString(
-                "ONBOARDING_SPLASH_HAVE_OLD_DEVICE_TITLE",
-                comment: "Title for the 'have my old device' choice of the 'Restore or Transfer' prompt",
-            ),
-            subtitle: OWSLocalizedString(
-                "ONBOARDING_SPLASH_HAVE_OLD_DEVICE_BODY",
-                comment: "Explanation of 'have old device' flow for the 'Restore or Transfer' prompt",
-            ),
-            iconName: "qr-code-48",
-            primaryAction: UIAction { [weak self] _ in
-                self?.setHasOldDeviceBlock(true)
-            },
-        )
-        stackView.addArrangedSubview(hasDeviceButton)
+        title = "Sign in"
+        view.backgroundColor = .Signal.background
 
-        let noDeviceButton = UIButton.registrationChoiceButton(
-            title: OWSLocalizedString(
-                "ONBOARDING_SPLASH_DO_NOT_HAVE_OLD_DEVICE_TITLE",
-                comment: "Title for the 'do not have my old device' choice of the 'Restore or Transfer' prompt",
-            ),
-            subtitle: OWSLocalizedString(
-                "ONBOARDING_SPLASH_DO_NOT_HAVE_OLD_DEVICE_BODY",
-                comment: "Explanation of 'do not have old device' flow for the 'Restore or Transfer' prompt",
-            ),
-            iconName: "no-phone-48",
-            primaryAction: UIAction { [weak self] _ in
-                self?.setHasOldDeviceBlock(false)
-            },
+        usernameField.font = .dynamicTypeBodyClamped
+        usernameField.textColor = .Signal.label
+        usernameField.autocorrectionType = .no
+        usernameField.autocapitalizationType = .none
+        usernameField.spellCheckingType = .no
+        usernameField.textContentType = .username
+        usernameField.placeholder = "Username"
+        usernameField.accessibilityIdentifier = "concord.signIn.username"
+        usernameField.borderStyle = .roundedRect
+
+        passwordField.font = .dynamicTypeBodyClamped
+        passwordField.textColor = .Signal.label
+        passwordField.textContentType = .password
+        passwordField.isSecureTextEntry = true
+        passwordField.placeholder = "Password"
+        passwordField.accessibilityIdentifier = "concord.signIn.password"
+        passwordField.borderStyle = .roundedRect
+
+        statusLabel.textAlignment = .center
+        statusLabel.numberOfLines = 0
+        statusLabel.accessibilityIdentifier = "concord.signIn.status"
+
+        signInButton.addAction(UIAction { [weak self] _ in
+            self?.signIn()
+        }, for: .primaryActionTriggered)
+
+        let titleLabel = UILabel.titleLabelForRegistration(text: "Concord")
+        let explanationLabel = UILabel.explanationLabelForRegistration(
+            text: "Use one of the accounts created by your Concord administrator. Account creation, phone registration, SMS, and voice verification are disabled.",
         )
-        stackView.addArrangedSubview(noDeviceButton)
+        let stack = UIStackView(arrangedSubviews: [
+            titleLabel,
+            explanationLabel,
+            usernameField,
+            passwordField,
+            signInButton,
+            statusLabel,
+        ])
+        stack.axis = .vertical
+        stack.spacing = 16
+        stack.alignment = .fill
+        view.addSubview(stack)
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            stack.leadingAnchor.constraint(equalTo: view.layoutMarginsGuide.leadingAnchor),
+            stack.trailingAnchor.constraint(equalTo: view.layoutMarginsGuide.trailingAnchor),
+            stack.centerYAnchor.constraint(equalTo: view.safeAreaLayoutGuide.centerYAnchor),
+            usernameField.heightAnchor.constraint(greaterThanOrEqualToConstant: 50),
+            passwordField.heightAnchor.constraint(greaterThanOrEqualToConstant: 50),
+        ])
+    }
+
+    private func signIn() {
+        guard let username = usernameField.text?.trimmingCharacters(in: .whitespacesAndNewlines),
+              let password = passwordField.text,
+              !username.isEmpty,
+              !password.isEmpty else {
+            showStatus("Enter your username and password.")
+            return
+        }
+        guard let url = configuredLoginURL() else {
+            showStatus("This build has no Concord authentication service configured. It will not use Signal registration services.")
+            return
+        }
+
+        signInButton.isEnabled = false
+        showStatus("Signing in…")
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.timeoutInterval = 15
+        request.httpBody = try? JSONSerialization.data(withJSONObject: [
+            "username": username,
+            "password": password,
+        ])
+
+        URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
+            DispatchQueue.main.async {
+                guard let self else { return }
+                self.signInButton.isEnabled = true
+                guard error == nil,
+                      let response = response as? HTTPURLResponse,
+                      (200..<300).contains(response.statusCode),
+                      let data,
+                      let result = try? JSONDecoder().decode(LoginResponse.self, from: data) else {
+                    self.showStatus("Unable to sign in. Check the username, password, and Concord service configuration.")
+                    return
+                }
+
+                // The access token deliberately remains in memory until the protocol/device
+                // provisioning flow is implemented. Do not place it in UserDefaults.
+                _ = result.accountId
+                _ = result.displayName
+                _ = result.accessToken
+                self.passwordField.text = nil
+                self.showStatus("Signed in as \(result.username). Device and encrypted-message provisioning are not configured in this build yet.")
+            }
+        }.resume()
+    }
+
+    private func configuredLoginURL() -> URL? {
+        guard let rawValue = Bundle.main.object(forInfoDictionaryKey: "ConcordAuthBaseURL") as? String,
+              let baseURL = URL(string: rawValue),
+              let scheme = baseURL.scheme?.lowercased(),
+              scheme == "https" || (scheme == "http" && ["localhost", "127.0.0.1"].contains(baseURL.host?.lowercased())) else {
+            return nil
+        }
+        return baseURL.appendingPathComponent("v1/accounts/login")
+    }
+
+    private func showStatus(_ text: String) {
+        statusLabel.text = text
     }
 }
 
@@ -229,26 +199,13 @@ private class RestoreOrTransferPickerController: StackSheetViewController {
 
 #if DEBUG
 private class PreviewRegistrationSplashPresenter: RegistrationSplashPresenter {
-    func continueFromSplash() {
-        print("continueFromSplash")
-    }
-
-    func setHasOldDevice(_ hasOldDevice: Bool) {
-        print("setHasOldDevice: \(hasOldDevice)")
-    }
-
-    func switchToDeviceLinkingMode() {
-        print("switchToDeviceLinkingMode")
-    }
-
-    func transferDevice() {
-        print("transferDevice")
-    }
+    func continueFromSplash() {}
+    func setHasOldDevice(_: Bool) {}
+    func switchToDeviceLinkingMode() {}
 }
 
 @available(iOS 17, *)
 #Preview {
-    let presenter = PreviewRegistrationSplashPresenter()
-    return RegistrationSplashViewController(presenter: presenter)
+    RegistrationSplashViewController(presenter: PreviewRegistrationSplashPresenter())
 }
 #endif
