@@ -309,11 +309,31 @@ private final class ConcordSignInViewController: OWSViewController, UITextFieldD
     private func configuredLoginURL() -> URL? {
         guard let rawValue = Bundle.main.object(forInfoDictionaryKey: "ConcordAuthBaseURL") as? String,
               let baseURL = URL(string: rawValue),
-              let scheme = baseURL.scheme?.lowercased(),
-              scheme == "https" || (scheme == "http" && ["localhost", "127.0.0.1"].contains(baseURL.host?.lowercased())) else {
+              let scheme = baseURL.scheme?.lowercased() else {
             return nil
         }
+        let allowsInsecureLocalAuth = Bundle.main.object(forInfoDictionaryKey: "ConcordAllowInsecureLocalAuth") as? Bool == true
+        let isAllowed = scheme == "https"
+            || (scheme == "http" && ["localhost", "127.0.0.1"].contains(baseURL.host?.lowercased()))
+            || (scheme == "http" && allowsInsecureLocalAuth && isPrivateIPv4Address(baseURL.host))
+        guard isAllowed else { return nil }
         return baseURL.appendingPathComponent("v1/accounts/login")
+    }
+
+    private func isPrivateIPv4Address(_ host: String?) -> Bool {
+        guard let host else {
+            return false
+        }
+        let octets = host.split(separator: ".").compactMap { Int($0) }
+        guard octets.count == 4,
+              octets.allSatisfy({ (0...255).contains($0) }) else {
+            return false
+        }
+        let first = octets[0]
+        let second = octets[1]
+        return first == 10
+            || (first == 172 && (16...31).contains(second))
+            || (first == 192 && second == 168)
     }
 
     private func showStatus(_ text: String) {

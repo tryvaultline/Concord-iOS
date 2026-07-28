@@ -7,7 +7,7 @@
 
 // Development only. A physical device must use an HTTPS Concord endpoint set
 // in User-Debug.xcconfig; do not ship a Signal service URL here.
-CONCORD_AUTH_BASE_URL = http://127.0.0.1:8080
+CONCORD_AUTH_BASE_URL = "http://127.0.0.1:8080"
 
 // User-specific overrides
 #include? "User-Debug.xcconfig"
